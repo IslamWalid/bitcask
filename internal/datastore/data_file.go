@@ -22,7 +22,7 @@ type DataFile struct {
 }
 
 func (f *DataFile) Write(key, value string, tstamp uint64) (int, error) {
-    rec := recfmt.Compress(key, value, tstamp)
+    rec := recfmt.CompressDataFileRec(key, value, tstamp)
 
     if len(rec) + f.currentSize > maxFileSize {
         err := f.newActiveFile()
@@ -63,7 +63,7 @@ func (f *DataFile) newActiveFile() error {
     return nil
 }
 
-func (f *DataFile) Read(pos, keySize, valueSize int) (*recfmt.DataRecord, error) {
+func (f *DataFile) Read(pos, keySize, valueSize int) (*recfmt.DataRec, error) {
     file, err := sio.Open(path.Join(f.filePath, f.fileName))
     if err != nil {
         return nil, err
@@ -77,5 +77,10 @@ func (f *DataFile) Read(pos, keySize, valueSize int) (*recfmt.DataRecord, error)
         return nil, err
     }
 
-    return recfmt.Extract(rec)
+    dataRec, _, err := recfmt.ExtractDataFileRec(rec)
+    if err != nil {
+        return nil, err
+    }
+
+    return dataRec, nil
 }

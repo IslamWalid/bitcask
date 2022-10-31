@@ -8,21 +8,21 @@ import (
 const dataFileRecHdr = 18
 const dataCorruption = "corrution detected: datastore files are corrupted"
 
-type RecordFmtError string
+type RecFmtError string
 
-func (e RecordFmtError) Error() string {
+func (e RecFmtError) Error() string {
     return string(e)
 }
 
-type DataRecord struct {
-    key         string
-    value       string
-    tstamp      uint64
-    keySize     uint16
-    valueSize   uint32
+type DataRec struct {
+    Key         string
+    Value       string
+    Tstamp      uint64
+    KeySize     uint16
+    ValueSize   uint32
 }
 
-func Compress(key, value string, tstamp uint64) []byte {
+func CompressDataFileRec(key, value string, tstamp uint64) []byte {
     rec := make([]byte, dataFileRecHdr + len(key) + len(value))
 
     binary.LittleEndian.PutUint64(rec[4:], tstamp)
@@ -37,11 +37,11 @@ func Compress(key, value string, tstamp uint64) []byte {
     return rec
 }
 
-func Extract(rec []byte) (*DataRecord, error) {
+func ExtractDataFileRec(rec []byte) (*DataRec, uint32, error) {
     parsedSum := binary.LittleEndian.Uint32(rec)
     err := validateCheckSum(parsedSum, rec[4:])
     if err != nil {
-        return nil, err
+        return nil, 0, err
     }
 
     tstamp := binary.LittleEndian.Uint64(rec[4:])
@@ -51,19 +51,19 @@ func Extract(rec []byte) (*DataRecord, error) {
     valueOffset := uint32(dataFileRecHdr + keySize)
     value := string(rec[valueOffset : valueOffset+valueSize])
 
-    return &DataRecord{
-    	key:       key,
-    	value:     value,
-    	tstamp:    tstamp,
-    	keySize:   keySize,
-    	valueSize: valueSize,
-    }, nil
+    return &DataRec{
+    	Key:       key,
+    	Value:     value,
+    	Tstamp:    tstamp,
+    	KeySize:   keySize,
+    	ValueSize: valueSize,
+    }, dataFileRecHdr + valueSize + uint32(keySize), nil
 }
 
 func validateCheckSum(parsedSum uint32, rec []byte) error {
     wantedSum := crc32.ChecksumIEEE(rec)
     if parsedSum != wantedSum {
-        return RecordFmtError(dataCorruption)
+        return RecFmtError(dataCorruption)
     }
 
     return nil
