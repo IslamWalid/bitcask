@@ -13,6 +13,7 @@ import (
 
 const maxFileSize = 10 * 1024
 const dataCorruption = "corrution detected: datastore files are corrupted"
+const recFileHeader = 18
 
 type DataFile struct {
     file        *sio.File
@@ -26,12 +27,12 @@ type DataFile struct {
 type DataRecord struct {
     key         string
     value       string
-    tstamp      uint32
+    tstamp      uint64
     keySize     uint16
     valueSize   uint32
 }
 
-func (f *DataFile) Write(key, value string, tstamp uint32) (int, error) {
+func (f *DataFile) Write(key, value string, tstamp uint64) (int, error) {
     rec := f.compress(key, value, tstamp)
 
     if len(rec) + f.currentSize > maxFileSize {
@@ -53,14 +54,14 @@ func (f *DataFile) Write(key, value string, tstamp uint32) (int, error) {
     return writePos, nil
 }
 
-func (f *DataFile) compress(key, value string, tstamp uint32) []byte {
-    rec := make([]byte, len(key) + len(value) + 16)
+func (f *DataFile) compress(key, value string, tstamp uint64) []byte {
+    rec := make([]byte, recFileHeader + len(key) + len(value))
 
-    binary.LittleEndian.PutUint32(rec[4:], tstamp)
-    binary.LittleEndian.PutUint16(rec[8:], uint16(len(key)))
-    binary.LittleEndian.PutUint32(rec[10:], uint32(len(value)))
-    copy(rec[14:], []byte(key))
-    copy(rec[len(key) + 14:], []byte(value))
+    binary.LittleEndian.PutUint64(rec[4:], tstamp)
+    binary.LittleEndian.PutUint16(rec[12:], uint16(len(key)))
+    binary.LittleEndian.PutUint32(rec[14:], uint32(len(value)))
+    copy(rec[recFileHeader:], []byte(key))
+    copy(rec[recFileHeader + len(key):], []byte(value))
 
     checkSum := crc32.ChecksumIEEE(rec[4:])
     binary.LittleEndian.PutUint32(rec, checkSum)
@@ -112,12 +113,12 @@ func (f *DataFile) extract(rec []byte) (*DataRecord, error) {
         return nil, err
     }
 
-    tstamp := binary.LittleEndian.Uint32(rec[4:])
-    keySize := binary.LittleEndian.Uint16(rec[8:])
-    valueSize := binary.LittleEndian.Uint32(rec[10:])
-    key := string(rec[14:keySize+14])
-    valueOffset := uint32(keySize + 14)
-    value := string(rec[valueOffset:valueOffset + valueSize])
+    tstamp := binary.LittleEndian.Uint64(rec[4:])
+    keySize := binary.LittleEndian.Uint16(rec[12:])
+    valueSize := binary.LittleEndian.Uint32(rec[14:])
+    key := string(rec[recFileHeader : recFileHeader+keySize])
+    valueOffset := uint32(recFileHeader + keySize)
+    value := string(rec[valueOffset : valueOffset+valueSize])
 
     return &DataRecord{
     	key:       key,
