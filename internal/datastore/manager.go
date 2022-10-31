@@ -17,7 +17,12 @@ const (
 )
 
 type LockMode int
+
 type DataStoreError string
+
+func (e DataStoreError) Error() string {
+    return string(e)
+}
 
 type DataStore struct {
     path string
@@ -102,8 +107,4 @@ func (d *DataStore) acquireFileLock() (bool, error) {
         return false, err
     }
     return ok, nil
-}
-
-func (e DataStoreError) Error() string {
-    return string(e)
 }
