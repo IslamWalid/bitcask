@@ -7,13 +7,15 @@ import (
 	"os"
 	"path"
 	"time"
+
+	"github.com/IslamWalid/bitcask/internal/sio"
 )
 
 const maxFileSize = 10 * 1024
 const dataCorruption = "corrution detected: datastore files are corrupted"
 
 type DataFile struct {
-    file        *os.File
+    file        *sio.File
     fileName    string
     filePath    string
     fileFlags   int
@@ -39,21 +41,14 @@ func (f *DataFile) Write(key, value string, tstamp uint32) (int, error) {
         }
     }
 
-    writePos := f.currentPos
     n, err := f.file.Write(rec)
+    if err != nil {
+        return 0, err
+    }
+
+    writePos := f.currentPos
     f.currentPos += n
     f.currentSize += n
-
-    attempts := 0
-    for i := n; err != nil; i += n {
-        if attempts == 5 {
-            return 0, err
-        }
-        n, err = f.file.Write(rec[i:])
-        f.currentPos += n
-        f.currentSize += n
-        attempts++
-    }
 
     return writePos, nil
 }
@@ -80,7 +75,7 @@ func (f *DataFile) newActiveFile() error {
     }
     
     fileName := fmt.Sprintf("%d.data", time.Now().UnixMicro())
-    file, err := os.OpenFile(path.Join(f.filePath, fileName), f.fileFlags, os.FileMode(0666))
+    file, err := sio.OpenFile(path.Join(f.filePath, fileName), f.fileFlags, os.FileMode(0666))
     if err != nil {
         return err
     }
@@ -94,7 +89,7 @@ func (f *DataFile) newActiveFile() error {
 }
 
 func (f *DataFile) Read(pos, keySize, valueSize int) (*DataRecord, error) {
-    file, err := os.Open(path.Join(f.filePath, f.fileName))
+    file, err := sio.Open(path.Join(f.filePath, f.fileName))
     if err != nil {
         return nil, err
     }
@@ -102,13 +97,9 @@ func (f *DataFile) Read(pos, keySize, valueSize int) (*DataRecord, error) {
 
     rec := make([]byte, keySize + valueSize + 14)
 
-    attempts := 0
-    n, err := file.ReadAt(rec, int64(pos))
-    for i := n; err != nil; i += n {
-        if attempts == 5 {
-            return nil, err
-        }
-        n, err = file.ReadAt(rec[i:], int64(pos))
+    _, err = file.ReadAt(rec, int64(pos))
+    if err != nil {
+        return nil, err
     }
 
     return f.extract(rec)
