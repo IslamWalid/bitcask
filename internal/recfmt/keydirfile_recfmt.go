@@ -11,7 +11,7 @@ type KeyDirRec struct {
     FileId      string
     ValuePos    uint32
     ValueSize   uint32
-    Tstamp      uint64
+    Tstamp      int64
 }
 
 func CompressKeyDirRec(key string, rec KeyDirRec) []byte {
@@ -22,7 +22,7 @@ func CompressKeyDirRec(key string, rec KeyDirRec) []byte {
     binary.LittleEndian.PutUint16(buf[8:], uint16(keySize))
     binary.LittleEndian.PutUint32(buf[10:], rec.ValueSize)
     binary.LittleEndian.PutUint32(buf[14:], rec.ValuePos)
-    binary.LittleEndian.PutUint64(buf[18:], rec.Tstamp)
+    binary.LittleEndian.PutUint64(buf[18:], uint64(rec.Tstamp))
     copy(buf[26:], []byte(key))
 
     return buf
@@ -40,6 +40,6 @@ func ExtractKeyDirRec(rec []byte) (string, KeyDirRec, int) {
     	FileId:    fileId,
     	ValuePos:  valuePos,
     	ValueSize: valueSize,
-    	Tstamp:    tstamp,
+    	Tstamp:    int64(tstamp),
     }, keyDirFileHdr + int(keySize)
 }

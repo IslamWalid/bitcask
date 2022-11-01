@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/IslamWalid/bitcask/internal/datastore"
 	"github.com/IslamWalid/bitcask/internal/recfmt"
 	"github.com/IslamWalid/bitcask/internal/sio"
 )
@@ -144,16 +145,31 @@ func (k KeyDir) parseDataFile(dataStorePath, name string) error {
     i := 0
     n := len(data)
     for i < n {
-        dataRec, recLen, err := recfmt.ExtractDataFileRec(data[i:])
+        curRec, recLen, err := recfmt.ExtractDataFileRec(data[i:])
         if err != nil {
             return err
         }
 
-        k[dataRec.Key] = recfmt.KeyDirRec{
-        	FileId:    name,
-        	ValuePos:  uint32(i),
-        	ValueSize: uint32(len(dataRec.Value)),
-        	Tstamp:    dataRec.Tstamp,
+        oldRec, isExist := k[curRec.Key]
+        if !isExist {
+            if oldRec.Tstamp < curRec.Tstamp {
+                if curRec.Value == datastore.TompStoneValue {
+                    delete(k, curRec.Key)
+                } else {
+                    oldRec.FileId = name
+                    oldRec.ValuePos = uint32(i)
+                    oldRec.Tstamp = curRec.Tstamp
+                    oldRec.ValueSize = curRec.ValueSize
+                    k[curRec.Key] = oldRec
+                }
+            }
+        } else if curRec.Value != datastore.TompStoneValue {
+            k[curRec.Key] = recfmt.KeyDirRec{
+                FileId:    name,
+                ValuePos:  uint32(i),
+                ValueSize: curRec.ValueSize,
+                Tstamp:    curRec.Tstamp,
+            }
         }
         i += int(recLen)
     }

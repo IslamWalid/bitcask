@@ -10,10 +10,13 @@ import (
 	"github.com/IslamWalid/bitcask/internal/sio"
 )
 
+// sha256 of "deleted value"
+const TompStoneValue = "8890fc70294d02dbde257989e802451c2276be7fb177c3ca4399dc4728e4e1e0"
+
 const maxFileSize = 10 * 1024
 
-type DataFile struct {
-    file        *sio.File
+type ActiveFile struct {
+    fileWrapper *sio.File
     fileName    string
     filePath    string
     fileFlags   int
@@ -21,54 +24,54 @@ type DataFile struct {
     currentSize int
 }
 
-func (f *DataFile) Write(key, value string, tstamp uint64) (int, error) {
+func (a *ActiveFile) Write(key, value string, tstamp int64) (int, error) {
     rec := recfmt.CompressDataFileRec(key, value, tstamp)
 
-    if len(rec) + f.currentSize > maxFileSize {
-        err := f.newActiveFile()
+    if a.fileWrapper == nil || len(rec) + a.currentSize > maxFileSize {
+        err := a.newActiveFile()
         if err != nil {
             return 0, err
         }
     }
 
-    n, err := f.file.Write(rec)
+    n, err := a.fileWrapper.Write(rec)
     if err != nil {
         return 0, err
     }
 
-    writePos := f.currentPos
-    f.currentPos += n
-    f.currentSize += n
+    writePos := a.currentPos
+    a.currentPos += n
+    a.currentSize += n
 
     return writePos, nil
 }
 
-func (f *DataFile) newActiveFile() error {
-    err := f.file.Close()
+func (a *ActiveFile) newActiveFile() error {
+    err := a.fileWrapper.File.Close()
     if err != nil {
         return err
     }
     
     fileName := fmt.Sprintf("%d.data", time.Now().UnixMicro())
-    file, err := sio.OpenFile(path.Join(f.filePath, fileName), f.fileFlags, os.FileMode(0666))
+    file, err := sio.OpenFile(path.Join(a.filePath, fileName), a.fileFlags, os.FileMode(0666))
     if err != nil {
         return err
     }
 
-    f.file = file
-    f.fileName = fileName
-    f.currentPos = 0
-    f.currentSize = 0
+    a.fileWrapper = file
+    a.fileName = fileName
+    a.currentPos = 0
+    a.currentSize = 0
 
     return nil
 }
 
-func (f *DataFile) Read(pos, keySize, valueSize int) (*recfmt.DataRec, error) {
-    file, err := sio.Open(path.Join(f.filePath, f.fileName))
+func (a *ActiveFile) Read(pos, keySize, valueSize int) (*recfmt.DataRec, error) {
+    file, err := sio.Open(path.Join(a.filePath, a.fileName))
     if err != nil {
         return nil, err
     }
-    defer file.Close()
+    defer file.File.Close()
 
     rec := make([]byte, keySize + valueSize + 14)
 
@@ -83,4 +86,16 @@ func (f *DataFile) Read(pos, keySize, valueSize int) (*recfmt.DataRec, error) {
     }
 
     return dataRec, nil
+}
+
+func (a *ActiveFile) Name() string {
+    return a.fileName
+}
+
+func (a *ActiveFile) Sync() error {
+    return a.fileWrapper.File.Sync()
+}
+
+func (a *ActiveFile) Close() {
+    a.fileWrapper.File.Close()
 }

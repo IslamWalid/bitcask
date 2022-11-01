@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"errors"
 	"os"
 	"path"
 
@@ -18,15 +19,10 @@ const (
 
 type LockMode int
 
-type DataStoreError string
-
-func (e DataStoreError) Error() string {
-    return string(e)
-}
-
 type DataStore struct {
     path string
     lock LockMode
+    flck *flock.Flock
 }
 
 func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
@@ -44,9 +40,9 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
             return nil, err
         }
         if !acquired {
-            return nil, DataStoreError(accessDenied)
+            return nil, errors.New(accessDenied)
         }
-    } else if os.IsNotExist(dirErr) {
+    } else if os.IsNotExist(dirErr) && lock == ExclusiveLock {
         err := d.createDataStoreDir()
         if err != nil {
             return nil, err
@@ -56,6 +52,15 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
     }
 
     return d, nil
+}
+
+func NewActiveFile(dataStorePath string, fileFlags int) *ActiveFile {
+    d := &ActiveFile{
+    	filePath:   dataStorePath,
+    	fileFlags:  fileFlags,
+    }
+
+    return d
 }
 
 func (d *DataStore) createDataStoreDir() error {
@@ -95,16 +100,20 @@ func (d *DataStore) acquireFileLock() (bool, error) {
     var err error
     var ok bool
 
-    flck := flock.New(d.path)
+    d.flck = flock.New(d.path)
     switch d.lock {
     case ExclusiveLock:
-        ok, err = flck.TryLock()
+        ok, err = d.flck.TryLock()
     case SharedLock:
-        ok, err = flck.TryRLock()
+        ok, err = d.flck.TryRLock()
     }
 
     if err != nil {
         return false, err
     }
     return ok, nil
+}
+
+func (d *DataStore) Close() {
+    d.flck.Unlock()
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type File struct {
-    file *os.File
+    File *os.File
 }
 
 func OpenFile(name string, flag int, perm fs.FileMode) (*File, error) {
@@ -16,7 +16,7 @@ func OpenFile(name string, flag int, perm fs.FileMode) (*File, error) {
     }
 
     f := &File{
-    	file: file,
+    	File: file,
     }
 
     return f, nil
@@ -29,7 +29,7 @@ func Open(name string) (*File, error) {
     }
 
     f := &File{
-    	file: file,
+    	File: file,
     }
 
     return f, nil
@@ -37,33 +37,29 @@ func Open(name string) (*File, error) {
 
 func (f *File) ReadAt(b []byte, off int64) (int, error) {
     attempts := 0
-    n, err := f.file.ReadAt(b, off)
+    n, err := f.File.ReadAt(b, off)
     for i := n; err != nil; i += n {
         if attempts == 5 {
             return 0, err
         }
         off += int64(i)
-        n, err = f.file.ReadAt(b[i:], int64(off))
+        n, err = f.File.ReadAt(b[i:], int64(off))
     }
 
     return len(b), nil
 }
 
 func (f *File) Write(b []byte) (int, error) {
-    n, err := f.file.Write(b)
+    n, err := f.File.Write(b)
 
     attempts := 0
     for i := n; err != nil; i += n {
         if attempts == 5 {
             return 0, err
         }
-        n, err = f.file.Write(b[i:])
+        n, err = f.File.Write(b[i:])
         attempts++
     }
 
     return len(b), nil
-}
-
-func (f *File) Close() error {
-    return f.file.Close()
 }
