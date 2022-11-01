@@ -5,7 +5,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/IslamWalid/bitcask/internal/datastore"
 	"github.com/IslamWalid/bitcask/internal/recfmt"
 	"github.com/IslamWalid/bitcask/internal/sio"
 )
@@ -47,7 +46,7 @@ func New(dataStorePath string, privacy KeyDirPrivacy) (KeyDir, error) {
     if privacy == SharedKeyDir {
         k.share(dataStorePath)
     }
-    
+
     return k, nil
 }
 
@@ -61,11 +60,8 @@ func (k KeyDir) keyDirFileBuild(dataStorePath string) (bool, error) {
     }
 
     okay, err := isOld(dataStorePath)
-    if err != nil {
+    if err != nil || !okay {
         return false, nil
-    }
-    if !okay {
-        return okay, nil
     }
 
     i := 0
@@ -84,12 +80,12 @@ func isOld(dataStorePath string) (bool, error) {
     if err != nil {
         return false, err
     }
-    
+
     keydirStat, err := os.Stat(path.Join(dataStorePath, "keydir"))
     if err != nil {
         return false, err
     }
-    
+
     return keydirStat.ModTime().Before(dataStoreStat.ModTime()), nil
 }
 
@@ -141,34 +137,22 @@ func (k KeyDir) parseDataFile(dataStorePath, name string) error {
     if err != nil {
         return err
     }
-    
+
     i := 0
     n := len(data)
     for i < n {
-        curRec, recLen, err := recfmt.ExtractDataFileRec(data[i:])
+        recent, recLen, err := recfmt.ExtractDataFileRec(data[i:])
         if err != nil {
             return err
         }
 
-        oldRec, isExist := k[curRec.Key]
-        if !isExist {
-            if oldRec.Tstamp < curRec.Tstamp {
-                if curRec.Value == datastore.TompStoneValue {
-                    delete(k, curRec.Key)
-                } else {
-                    oldRec.FileId = name
-                    oldRec.ValuePos = uint32(i)
-                    oldRec.Tstamp = curRec.Tstamp
-                    oldRec.ValueSize = curRec.ValueSize
-                    k[curRec.Key] = oldRec
-                }
-            }
-        } else if curRec.Value != datastore.TompStoneValue {
-            k[curRec.Key] = recfmt.KeyDirRec{
+        old, isExist := k[recent.Key]
+        if !isExist || old.Tstamp < recent.Tstamp {
+            k[recent.Key] = recfmt.KeyDirRec{
                 FileId:    name,
                 ValuePos:  uint32(i),
-                ValueSize: curRec.ValueSize,
-                Tstamp:    curRec.Tstamp,
+                ValueSize: recent.ValueSize,
+                Tstamp:    recent.Tstamp,
             }
         }
         i += int(recLen)

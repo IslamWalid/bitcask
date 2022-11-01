@@ -20,6 +20,9 @@ const (
     SyncOnDemand ConfigOpt = 3
 )
 
+// sha256 of "deleted value"
+const tompStoneValue = "8890fc70294d02dbde257989e802451c2276be7fb177c3ca4399dc4728e4e1e0"
+
 const keyNotExist = "key does not exist"
 
 const requireWrite = "require write permission"
@@ -131,11 +134,7 @@ func (b *Bitcask) Delete(key string) error {
         return err
     }
     
-    b.Put(key, datastore.TompStoneValue)
-
-    b.keyDirMu.Lock()
-    delete(b.keyDir, key)
-    b.keyDirMu.Unlock()
+    b.Put(key, tompStoneValue)
 
     return nil
 }
