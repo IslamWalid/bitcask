@@ -2,9 +2,12 @@ package datastore
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 
+	"github.com/IslamWalid/bitcask/internal/recfmt"
+	"github.com/IslamWalid/bitcask/internal/sio"
 	"github.com/gofrs/flock"
 )
 
@@ -16,6 +19,11 @@ const (
 
 	accessDenied = "access denied: datastore is locked"
 )
+
+// sha256 of "deleted value"
+const TompStoneValue = "8890fc70294d02dbde257989e802451c2276be7fb177c3ca4399dc4728e4e1e0"
+
+const KeyNotExist = "key does not exist"
 
 type LockMode int
 
@@ -55,12 +63,12 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 }
 
 func NewActiveFile(dataStorePath string, fileFlags int) *ActiveFile {
-	d := &ActiveFile{
+	a := &ActiveFile{
 		filePath:  dataStorePath,
 		fileFlags: fileFlags,
 	}
 
-	return d
+	return a
 }
 
 func (d *DataStore) createDataStoreDir() error {
@@ -68,12 +76,6 @@ func (d *DataStore) createDataStoreDir() error {
 	if err != nil {
 		return err
 	}
-
-	lfile, err := os.Create(path.Join(d.path, lockFile))
-	if err != nil {
-		return err
-	}
-	defer lfile.Close()
 
 	_, err = d.acquireFileLock()
 	if err != nil {
@@ -100,7 +102,7 @@ func (d *DataStore) acquireFileLock() (bool, error) {
 	var err error
 	var ok bool
 
-	d.flck = flock.New(d.path)
+	d.flck = flock.New(path.Join(d.path, lockFile))
 	switch d.lock {
 	case ExclusiveLock:
 		ok, err = d.flck.TryLock()
@@ -112,6 +114,29 @@ func (d *DataStore) acquireFileLock() (bool, error) {
 		return false, err
 	}
 	return ok, nil
+}
+
+func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize uint32) (string, error) {
+	bufsz := recfmt.DataFileRecHdr + uint32(len(key)) + valueSize
+	buf := make([]byte, bufsz)
+
+	f, err := sio.Open(path.Join(d.path, fileId))
+	if err != nil {
+		return "", err
+	}
+	defer f.File.Close()
+
+	f.ReadAt(buf, int64(valuePos))
+	data, _, err := recfmt.ExtractDataFileRec(buf)
+	if err != nil {
+		return "", err
+	}
+
+	if data.Value == TompStoneValue {
+		return "", errors.New(fmt.Sprintf("%s: %s", data.Key, KeyNotExist))
+	}
+
+	return data.Value, nil
 }
 
 func (d *DataStore) Close() {

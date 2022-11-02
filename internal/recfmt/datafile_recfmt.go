@@ -34,17 +34,17 @@ func CompressDataFileRec(key, value string, tstamp int64) []byte {
 
 func ExtractDataFileRec(rec []byte) (*DataRec, uint32, error) {
 	parsedSum := binary.LittleEndian.Uint32(rec)
-	err := validateCheckSum(parsedSum, rec[4:])
-	if err != nil {
-		return nil, 0, err
-	}
-
 	tstamp := binary.LittleEndian.Uint64(rec[4:])
 	keySize := binary.LittleEndian.Uint16(rec[12:])
 	valueSize := binary.LittleEndian.Uint32(rec[14:])
 	key := string(rec[DataFileRecHdr : DataFileRecHdr+keySize])
 	valueOffset := uint32(DataFileRecHdr + keySize)
 	value := string(rec[valueOffset : valueOffset+valueSize])
+
+	err := validateCheckSum(parsedSum, rec[4:DataFileRecHdr+uint32(keySize)+valueSize])
+	if err != nil {
+		return nil, 0, err
+	}
 
 	return &DataRec{
 		Key:       key,

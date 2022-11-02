@@ -44,9 +44,11 @@ func (a *ActiveFile) Write(key, value string, tstamp int64) (int, error) {
 }
 
 func (a *ActiveFile) newActiveFile() error {
-	err := a.fileWrapper.File.Close()
-	if err != nil {
-		return err
+	if a.fileWrapper != nil {
+		err := a.fileWrapper.File.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	fileName := fmt.Sprintf("%d.data", time.Now().UnixMicro())
@@ -63,36 +65,19 @@ func (a *ActiveFile) newActiveFile() error {
 	return nil
 }
 
-func (a *ActiveFile) Read(pos, keySize, valueSize int) (*recfmt.DataRec, error) {
-	file, err := sio.Open(path.Join(a.filePath, a.fileName))
-	if err != nil {
-		return nil, err
-	}
-	defer file.File.Close()
-
-	rec := make([]byte, keySize+valueSize+14)
-
-	_, err = file.ReadAt(rec, int64(pos))
-	if err != nil {
-		return nil, err
-	}
-
-	dataRec, _, err := recfmt.ExtractDataFileRec(rec)
-	if err != nil {
-		return nil, err
-	}
-
-	return dataRec, nil
-}
-
 func (a *ActiveFile) Name() string {
 	return a.fileName
 }
 
 func (a *ActiveFile) Sync() error {
-	return a.fileWrapper.File.Sync()
+	if a.fileWrapper != nil {
+		return a.fileWrapper.File.Sync()
+	}
+	return nil
 }
 
 func (a *ActiveFile) Close() {
-	a.fileWrapper.File.Close()
+	if a.fileWrapper != nil {
+		a.fileWrapper.File.Close()
+	}
 }

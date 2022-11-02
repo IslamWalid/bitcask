@@ -102,10 +102,12 @@ func (k KeyDir) dataFilesBuild(dataStorePath string) error {
 
 	fileNames := make([]string, 0)
 	for _, file := range files {
-		fileNames = append(fileNames, file.Name())
+		if file.Name()[0] != '.' {
+			fileNames = append(fileNames, file.Name())
+		}
 	}
 
-	k.parseFiles(dataStorePath, categorizeFiles(fileNames))
+	err = k.parseFiles(dataStorePath, categorizeFiles(fileNames))
 	if err != nil {
 		return err
 	}
@@ -190,7 +192,7 @@ func categorizeFiles(allFiles []string) map[string]fileType {
 
 func (k KeyDir) share(dataStorePath string) error {
 	flags := os.O_CREATE | os.O_RDWR
-	perm := os.FileMode(666)
+	perm := os.FileMode(0666)
 	file, err := sio.OpenFile(path.Join(dataStorePath, "keydir"), flags, perm)
 	if err != nil {
 		return err
