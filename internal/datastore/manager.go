@@ -62,10 +62,11 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 	return d, nil
 }
 
-func NewActiveFile(dataStorePath string, fileFlags int) *ActiveFile {
-	a := &ActiveFile{
-		filePath:  dataStorePath,
-		fileFlags: fileFlags,
+func NewAppendFile(dataStorePath string, fileFlags int, appendType AppendType) *AppendFile {
+	a := &AppendFile{
+		filePath:   dataStorePath,
+		fileFlags:  fileFlags,
+		appendType: appendType,
 	}
 
 	return a
@@ -137,6 +138,10 @@ func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize ui
 	}
 
 	return data.Value, nil
+}
+
+func (d *DataStore) Path() string {
+	return d.path
 }
 
 func (d *DataStore) Close() {

@@ -35,7 +35,8 @@ type Bitcask struct {
 	keyDirMu   sync.Mutex
 	readerCnt  int32
 	dataStore  *datastore.DataStore
-	activeFile *datastore.ActiveFile
+	activeFile *datastore.AppendFile
+	fileFlags  int
 }
 
 func Open(dataStorePath string, opts ...ConfigOpt) (*Bitcask, error) {
@@ -52,7 +53,8 @@ func Open(dataStorePath string, opts ...ConfigOpt) (*Bitcask, error) {
 		if b.usrOpts.syncOption == SyncOnPut {
 			fileFlags |= os.O_SYNC
 		}
-		b.activeFile = datastore.NewActiveFile(dataStorePath, fileFlags)
+		b.fileFlags = fileFlags
+		b.activeFile = datastore.NewAppendFile(dataStorePath, b.fileFlags, datastore.Active)
 	} else {
 		privacy = keydir.SharedKeyDir
 		lockMode = datastore.SharedLock
@@ -100,7 +102,7 @@ func (b *Bitcask) Put(key, value string) error {
 	}
 
 	tstamp := time.Now().UnixMicro()
-	n, err := b.activeFile.Write(key, value, tstamp)
+	n, err := b.activeFile.WriteData(key, value, tstamp)
 	if err != nil {
 		return err
 	}
@@ -174,6 +176,39 @@ func (b *Bitcask) Fold(fn func(string, string, any) any, acc any) any {
 }
 
 func (b *Bitcask) Merge() error {
+	if b.usrOpts.accessPermission == ReadOnly {
+		return errors.New(fmt.Sprintf("Merge: %s", requireWrite))
+	}
+
+	b.keyDirMu.Lock()
+	oldKeyDir := b.keyDir
+	b.keyDirMu.Unlock()
+	newKeyDir := keydir.KeyDir{}
+	oldFiles, err := b.listOldFiles()
+	if err != nil {
+		return err
+	}
+
+	mergeFile := datastore.NewAppendFile(b.dataStore.Path(), b.fileFlags, datastore.Merge)
+	defer mergeFile.Close()
+	for key, rec := range oldKeyDir {
+		if rec.FileId != b.activeFile.Name() {
+			newRec, err := b.mergeWrite(mergeFile, key)
+			if err != nil {
+				return err
+			}
+			newKeyDir[key] = newRec
+		} else {
+			newKeyDir[key] = rec
+		}
+	}
+
+	b.keyDirMu.Lock()
+	b.keyDir = newKeyDir
+	b.keyDirMu.Unlock()
+
+	b.deleteOldFiles(oldFiles)
+
 	return nil
 }
 
@@ -191,5 +226,4 @@ func (b *Bitcask) Close() {
 		b.activeFile.Close()
 	}
 	b.dataStore.Close()
-	b = nil
 }

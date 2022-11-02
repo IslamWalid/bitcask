@@ -72,7 +72,22 @@ func TestOpen(t *testing.T) {
 	})
 
 	t.Run("open existing bitcask with hint files in it", func(t *testing.T) {
-		// implemented after implementing merge
+		b1, _ := Open(testBitcaskPath, ReadWrite)
+
+		for i := 0; i < 1000; i++ {
+			key := fmt.Sprintf("key%d", i+1)
+			value := fmt.Sprintf("value%d", i+1)
+			b1.Put(key, value)
+		}
+		b1.Merge()
+		b1.Close()
+
+		b2, _ := Open(testBitcaskPath)
+		got, _ := b2.Get("key50")
+		want := "value50"
+
+		assertString(t, got, want)
+		os.RemoveAll(testBitcaskPath)
 	})
 
 	t.Run("open bitcask with writer exists in it", func(t *testing.T) {
@@ -223,7 +238,35 @@ func TestFold(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
+	t.Run("merge with write permission", func(t *testing.T) {
+		b, _ := Open(testBitcaskPath, ReadWrite)
 
+		for i := 0; i < 10000; i++ {
+			key := fmt.Sprintf("key%d", i+1)
+			value := fmt.Sprintf("value%d", i+1)
+			b.Put(key, value)
+		}
+		b.Merge()
+		want := "value100"
+		got, _ := b.Get("key100")
+
+		b.Close()
+		assertString(t, got, want)
+		os.RemoveAll(testBitcaskPath)
+	})
+
+	t.Run("with no write permission", func(t *testing.T) {
+		b1, _ := Open(testBitcaskPath, ReadWrite)
+		b1.Close()
+
+		b2, _ := Open(testBitcaskPath)
+
+		err := b2.Merge()
+		want := "Merge: require write permission"
+
+		assertError(t, err, want)
+		os.RemoveAll(testBitcaskPath)
+	})
 }
 
 func TestSync(t *testing.T) {

@@ -28,13 +28,13 @@ func CompressKeyDirRec(key string, rec KeyDirRec) []byte {
 	return buf
 }
 
-func ExtractKeyDirRec(rec []byte) (string, KeyDirRec, int) {
-	fileId := strconv.FormatUint(binary.LittleEndian.Uint64(rec), 10)
-	keySize := binary.LittleEndian.Uint16(rec[8:])
-	valueSize := binary.LittleEndian.Uint32(rec[10:])
-	valuePos := binary.LittleEndian.Uint32(rec[14:])
-	tstamp := binary.LittleEndian.Uint64(rec[18:])
-	key := string(rec[26 : keySize+26])
+func ExtractKeyDirRec(buf []byte) (string, KeyDirRec, int) {
+	fileId := strconv.FormatUint(binary.LittleEndian.Uint64(buf), 10)
+	keySize := binary.LittleEndian.Uint16(buf[8:])
+	valueSize := binary.LittleEndian.Uint32(buf[10:])
+	valuePos := binary.LittleEndian.Uint32(buf[14:])
+	tstamp := binary.LittleEndian.Uint64(buf[18:])
+	key := string(buf[26 : keySize+26])
 
 	return key, KeyDirRec{
 		FileId:    fileId,

@@ -1,6 +1,7 @@
 package keydir
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -143,18 +144,18 @@ func (k KeyDir) parseDataFile(dataStorePath, name string) error {
 	i := 0
 	n := len(data)
 	for i < n {
-		recent, recLen, err := recfmt.ExtractDataFileRec(data[i:])
+		rec, recLen, err := recfmt.ExtractDataFileRec(data[i:])
 		if err != nil {
 			return err
 		}
 
-		old, isExist := k[recent.Key]
-		if !isExist || old.Tstamp < recent.Tstamp {
-			k[recent.Key] = recfmt.KeyDirRec{
+		old, isExist := k[rec.Key]
+		if !isExist || old.Tstamp < rec.Tstamp {
+			k[rec.Key] = recfmt.KeyDirRec{
 				FileId:    name,
 				ValuePos:  uint32(i),
-				ValueSize: recent.ValueSize,
-				Tstamp:    recent.Tstamp,
+				ValueSize: rec.ValueSize,
+				Tstamp:    rec.Tstamp,
 			}
 		}
 		i += int(recLen)
@@ -164,6 +165,20 @@ func (k KeyDir) parseDataFile(dataStorePath, name string) error {
 }
 
 func (k KeyDir) parseHintFile(dataStorePath, name string) error {
+	data, err := os.ReadFile(path.Join(dataStorePath, name))
+	if err != nil {
+		return err
+	}
+
+	i := 0
+	n := len(data)
+	for i < n {
+		key, rec, recLen := recfmt.ExtractHintFileRec(data[i:])
+		rec.FileId = fmt.Sprintf("%s.data", strings.Trim(name, ".hint"))
+		k[key] = rec
+		i += recLen
+	}
+
 	return nil
 }
 

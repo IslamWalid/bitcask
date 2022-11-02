@@ -18,30 +18,30 @@ type DataRec struct {
 }
 
 func CompressDataFileRec(key, value string, tstamp int64) []byte {
-	rec := make([]byte, DataFileRecHdr+len(key)+len(value))
+	buf := make([]byte, DataFileRecHdr+len(key)+len(value))
 
-	binary.LittleEndian.PutUint64(rec[4:], uint64(tstamp))
-	binary.LittleEndian.PutUint16(rec[12:], uint16(len(key)))
-	binary.LittleEndian.PutUint32(rec[14:], uint32(len(value)))
-	copy(rec[DataFileRecHdr:], []byte(key))
-	copy(rec[DataFileRecHdr+len(key):], []byte(value))
+	binary.LittleEndian.PutUint64(buf[4:], uint64(tstamp))
+	binary.LittleEndian.PutUint16(buf[12:], uint16(len(key)))
+	binary.LittleEndian.PutUint32(buf[14:], uint32(len(value)))
+	copy(buf[DataFileRecHdr:], []byte(key))
+	copy(buf[DataFileRecHdr+len(key):], []byte(value))
 
-	checkSum := crc32.ChecksumIEEE(rec[4:])
-	binary.LittleEndian.PutUint32(rec, checkSum)
+	checkSum := crc32.ChecksumIEEE(buf[4:])
+	binary.LittleEndian.PutUint32(buf, checkSum)
 
-	return rec
+	return buf
 }
 
-func ExtractDataFileRec(rec []byte) (*DataRec, uint32, error) {
-	parsedSum := binary.LittleEndian.Uint32(rec)
-	tstamp := binary.LittleEndian.Uint64(rec[4:])
-	keySize := binary.LittleEndian.Uint16(rec[12:])
-	valueSize := binary.LittleEndian.Uint32(rec[14:])
-	key := string(rec[DataFileRecHdr : DataFileRecHdr+keySize])
+func ExtractDataFileRec(buf []byte) (*DataRec, uint32, error) {
+	parsedSum := binary.LittleEndian.Uint32(buf)
+	tstamp := binary.LittleEndian.Uint64(buf[4:])
+	keySize := binary.LittleEndian.Uint16(buf[12:])
+	valueSize := binary.LittleEndian.Uint32(buf[14:])
+	key := string(buf[DataFileRecHdr : DataFileRecHdr+keySize])
 	valueOffset := uint32(DataFileRecHdr + keySize)
-	value := string(rec[valueOffset : valueOffset+valueSize])
+	value := string(buf[valueOffset : valueOffset+valueSize])
 
-	err := validateCheckSum(parsedSum, rec[4:DataFileRecHdr+uint32(keySize)+valueSize])
+	err := validateCheckSum(parsedSum, buf[4:DataFileRecHdr+uint32(keySize)+valueSize])
 	if err != nil {
 		return nil, 0, err
 	}
