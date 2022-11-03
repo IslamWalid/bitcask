@@ -52,7 +52,11 @@ func (b *Bitcask) listOldFiles() ([]string, error) {
 }
 
 func (b *Bitcask) mergeWrite(mergeFile *datastore.AppendFile, key string) (recfmt.KeyDirRec, error) {
-	value, _ := b.Get(key)
+	value, err := b.Get(key)
+	if err != nil {
+		return recfmt.KeyDirRec{}, err
+	}
+
 	tstamp := time.Now().UnixMicro()
 
 	n, err := mergeFile.WriteData(key, value, tstamp)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -195,9 +196,12 @@ func (b *Bitcask) Merge() error {
 		if rec.FileId != b.activeFile.Name() {
 			newRec, err := b.mergeWrite(mergeFile, key)
 			if err != nil {
-				return err
+				if !strings.HasSuffix(err.Error(), datastore.KeyNotExist) {
+					return err
+				}
+			} else {
+				newKeyDir[key] = newRec
 			}
-			newKeyDir[key] = newRec
 		} else {
 			newKeyDir[key] = rec
 		}
