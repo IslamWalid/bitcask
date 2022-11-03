@@ -10,15 +10,20 @@ import (
 	"github.com/IslamWalid/bitcask/internal/sio"
 )
 
-const maxFileSize = 10 * 1024
-
 const (
-	Merge  AppendType = 0
+	// Merge represents that the file type is a merge file.
+	Merge AppendType = 0
+	// Merge represents that the file type is an active file.
 	Active AppendType = 1
+
+	// maxFileSize represents the maximum size for each file.
+	maxFileSize = 10 * 1024
 )
 
+// AppendType represents the type of the append file.
 type AppendType int
 
+// AppendFile contains the metadata about the append file.
 type AppendFile struct {
 	fileWrapper *sio.File
 	hintWrapper *sio.File
@@ -30,6 +35,9 @@ type AppendFile struct {
 	currentSize int
 }
 
+// WriteData writes a data record to the given append file.
+// Return the position of the written data.
+// Return error on system failures.
 func (a *AppendFile) WriteData(key, value string, tstamp int64) (int, error) {
 	rec := recfmt.CompressDataFileRec(key, value, tstamp)
 
@@ -52,6 +60,9 @@ func (a *AppendFile) WriteData(key, value string, tstamp int64) (int, error) {
 	return writePos, nil
 }
 
+// WriteData writes a hint record to the hint file
+// associated with the given append file.
+// Return error on system failures.
 func (a *AppendFile) WriteHint(key string, rec recfmt.KeyDirRec) error {
 	buf := recfmt.CompressHintFileRec(key, rec)
 	_, err := a.hintWrapper.Write(buf)
@@ -62,6 +73,9 @@ func (a *AppendFile) WriteHint(key string, rec recfmt.KeyDirRec) error {
 	return nil
 }
 
+// newAppendFile creates new append file.
+// create a hint file associated with it if the file type is merge.
+// return error on system failures.
 func (a *AppendFile) newAppendFile() error {
 	if a.fileWrapper != nil {
 		err := a.fileWrapper.File.Close()
@@ -100,10 +114,12 @@ func (a *AppendFile) newAppendFile() error {
 	return nil
 }
 
+// Name returns the name of the append file.
 func (a *AppendFile) Name() string {
 	return a.fileName
 }
 
+// Sync flushes the data written to the append file to the disk.
 func (a *AppendFile) Sync() error {
 	if a.fileWrapper != nil {
 		return a.fileWrapper.File.Sync()
@@ -111,6 +127,7 @@ func (a *AppendFile) Sync() error {
 	return nil
 }
 
+// Close closes the append file and its associated hint file if exists.
 func (a *AppendFile) Close() {
 	if a.fileWrapper != nil {
 		a.fileWrapper.File.Close()

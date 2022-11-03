@@ -1,3 +1,4 @@
+// Package keydir provides several mechanisms to build the keydir map of bitcask datastores.
 package keydir
 
 import (
@@ -10,24 +11,35 @@ import (
 	"github.com/IslamWalid/bitcask/internal/sio"
 )
 
-const keyDirFile = "keydir"
-
 const (
+	// PrivateKeyDir specifies that the keydir is owned by a writer process and will not be shared.
 	PrivateKeyDir KeyDirPrivacy = 0
-	SharedKeyDir  KeyDirPrivacy = 1
-)
+	// SharedKeyDir specifies that the keydir is owned by a reader proccess and will
+	// available writers to used it instead of parsing the whole datastore files.
+	SharedKeyDir KeyDirPrivacy = 1
 
-const (
+	// keyDirFile is the name of the file used to share the keydir map.
+	keyDirFile = "keydir"
+
+	// data represents that the file is a data file.
 	data fileType = 0
+	// hint represents that the file is a hint file.
 	hint fileType = 1
 )
 
+// fileType specifies whether the file is a data or hint file.
 type fileType int
 
+// KeyDirPrivacy specifies whether the keydir is private or shared.
 type KeyDirPrivacy int
 
+// KeyDir represents the map used by the bitcask.
 type KeyDir map[string]recfmt.KeyDirRec
 
+// New creates a new keydir map from the given datastore.
+// Select the convenient mechanism of building the keydir.
+// Share the built keydir map if shared privacy is specified.
+// Return an error on system failures.
 func New(dataStorePath string, privacy KeyDirPrivacy) (KeyDir, error) {
 	k := KeyDir{}
 
@@ -39,7 +51,7 @@ func New(dataStorePath string, privacy KeyDirPrivacy) (KeyDir, error) {
 		return k, nil
 	}
 
-	err = k.dataFilesBuild(dataStorePath)
+	err = k.dataStoreFilesBuild(dataStorePath)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +63,9 @@ func New(dataStorePath string, privacy KeyDirPrivacy) (KeyDir, error) {
 	return k, nil
 }
 
+// keyDirFileBuild tries to build the keydir from the shared keydir file.
+// return false if there is no keydir or the existing keydir is old.
+// return an error on system failures.
 func (k KeyDir) keyDirFileBuild(dataStorePath string) (bool, error) {
 	data, err := os.ReadFile(path.Join(dataStorePath, keyDirFile))
 	if err != nil {
@@ -76,6 +91,11 @@ func (k KeyDir) keyDirFileBuild(dataStorePath string) (bool, error) {
 	return true, nil
 }
 
+// isOld specifies whether the keydir file contains the data
+// that represents the current state of the datastore directory.
+// if the keydir is old this means that write operations happened
+// so this file is not representing the current state and should
+// be ignored when building the current keydir.
 func isOld(dataStorePath string) (bool, error) {
 	dataStoreStat, err := os.Stat(dataStorePath)
 	if err != nil {
@@ -90,7 +110,11 @@ func isOld(dataStorePath string) (bool, error) {
 	return keydirStat.ModTime().Before(dataStoreStat.ModTime()), nil
 }
 
-func (k KeyDir) dataFilesBuild(dataStorePath string) error {
+// dataStoreFilesBuild is another mechanism of building the keydir.
+// it uses the current data and hint files to build it.
+// it prefer the hint files on data files.
+// return and error on system failures.
+func (k KeyDir) dataStoreFilesBuild(dataStorePath string) error {
 	dataStore, err := os.Open(dataStorePath)
 	if err != nil {
 		return err
@@ -116,6 +140,9 @@ func (k KeyDir) dataFilesBuild(dataStorePath string) error {
 	return nil
 }
 
+// parseFiles parses the data from the given data and hint files
+// to create the keydir map.
+// return and error on system failures.
 func (k KeyDir) parseFiles(dataStorePath string, files map[string]fileType) error {
 	for name, ftype := range files {
 		switch ftype {
@@ -135,6 +162,8 @@ func (k KeyDir) parseFiles(dataStorePath string, files map[string]fileType) erro
 	return nil
 }
 
+// parseDataFile parses the data from a data files.
+// return and error on system failures.
 func (k KeyDir) parseDataFile(dataStorePath, name string) error {
 	data, err := os.ReadFile(path.Join(dataStorePath, name))
 	if err != nil {
@@ -164,6 +193,8 @@ func (k KeyDir) parseDataFile(dataStorePath, name string) error {
 	return nil
 }
 
+// parseHintFile parses the data from hint files.
+// return and error on system failures.
 func (k KeyDir) parseHintFile(dataStorePath, name string) error {
 	data, err := os.ReadFile(path.Join(dataStorePath, name))
 	if err != nil {
@@ -182,6 +213,7 @@ func (k KeyDir) parseHintFile(dataStorePath, name string) error {
 	return nil
 }
 
+// categorizeFiles specifies whether the file is data or hint file.
 func categorizeFiles(allFiles []string) map[string]fileType {
 	res := make(map[string]fileType)
 
@@ -205,6 +237,8 @@ func categorizeFiles(allFiles []string) map[string]fileType {
 	return res
 }
 
+// share writes the keydir map data in keydir file to be used by other readers.
+// return an error on system failures.
 func (k KeyDir) share(dataStorePath string) error {
 	flags := os.O_CREATE | os.O_RDWR
 	perm := os.FileMode(0666)

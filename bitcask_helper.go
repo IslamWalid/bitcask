@@ -9,6 +9,7 @@ import (
 	"github.com/IslamWalid/bitcask/internal/recfmt"
 )
 
+// parseUsrOpts fills an options struct with the passed user options.
 func parseUsrOpts(opts []ConfigOpt) options {
 	usrOpts := options{
 		syncOption:       SyncOnDemand,
@@ -27,6 +28,7 @@ func parseUsrOpts(opts []ConfigOpt) options {
 	return usrOpts
 }
 
+// listOldFiles prepares a list with all old files to be deleted after merge.
 func (b *Bitcask) listOldFiles() ([]string, error) {
 	res := make([]string, 0)
 
@@ -51,6 +53,9 @@ func (b *Bitcask) listOldFiles() ([]string, error) {
 	return res, nil
 }
 
+// mergeWrite performs a writing to the created merge file.
+// returns the new record about the written data
+// returns error if the data is deleted and will not be written again or on any system failures.
 func (b *Bitcask) mergeWrite(mergeFile *datastore.AppendFile, key string) (recfmt.KeyDirRec, error) {
 	value, err := b.Get(key)
 	if err != nil {
@@ -79,6 +84,7 @@ func (b *Bitcask) mergeWrite(mergeFile *datastore.AppendFile, key string) (recfm
 	return newRec, nil
 }
 
+// deleteOldFiles deletes all files passed to it.
 func (b *Bitcask) deleteOldFiles(files []string) error {
 	for _, file := range files {
 		err := os.Remove(path.Join(b.dataStore.Path(), file))

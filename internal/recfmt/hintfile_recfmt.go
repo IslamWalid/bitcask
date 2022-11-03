@@ -1,9 +1,11 @@
 package recfmt
 
-import (
-	"encoding/binary"
-)
+import "encoding/binary"
 
+// HintFileRecHdr represents the constant header length of hint file records.
+const HintFileRecHdr = 18
+
+// HintRec represents the data parsed from a hint file record.
 type HintRec struct {
 	key       string
 	keySize   uint16
@@ -12,8 +14,7 @@ type HintRec struct {
 	valueSize uint32
 }
 
-const HintFileRecHdr = 18
-
+// CompressHintFileRec compresses the given data into a hint file record.
 func CompressHintFileRec(key string, rec KeyDirRec) []byte {
 	buf := make([]byte, HintFileRecHdr+len(key))
 	binary.LittleEndian.PutUint64(buf, uint64(rec.Tstamp))
@@ -25,6 +26,8 @@ func CompressHintFileRec(key string, rec KeyDirRec) []byte {
 	return buf
 }
 
+// ExtractDataFileRec extracts the hint file record into a hint record.
+// Return the hint record and its length in the file.
 func ExtractHintFileRec(buf []byte) (string, KeyDirRec, int) {
 	tstamp := binary.LittleEndian.Uint64(buf)
 	keySize := binary.LittleEndian.Uint16(buf[8:])

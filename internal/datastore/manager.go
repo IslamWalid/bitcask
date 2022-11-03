@@ -1,3 +1,4 @@
+// Package datastore provides functionality to contorol the datastore directory.
 package datastore
 
 import (
@@ -12,27 +13,37 @@ import (
 )
 
 const (
+	// ExclusiveLock is an option to make the datastore lock exclusive.
 	ExclusiveLock LockMode = 0
-	SharedLock    LockMode = 1
+	// SharedLock is an option to make the datastore lock shared.
+	SharedLock LockMode = 1
 
+	// TompStone is a special value to mark the deleted values.
+	TompStone = "8890fc70294d02dbde257989e802451c2276be7fb177c3ca4399dc4728e4e1e0"
+
+	// lockFile is the name of the file used to lock the datastore directory.
 	lockFile = ".lck"
 
+	// Error message to represent permission denied access to the datastore
+	// when the directory is lock.
 	accessDenied = "access denied: datastore is locked"
+
+	// Error message to represent the absense of a value.
+	KeyNotExist = "key does not exist"
 )
 
-// sha256 of "deleted value"
-const TompStoneValue = "8890fc70294d02dbde257989e802451c2276be7fb177c3ca4399dc4728e4e1e0"
-
-const KeyNotExist = "key does not exist"
-
+// LockMode represents the lock mode of the directory.
 type LockMode int
 
+// DataStore represents and contains the metadata of the datastore directory.
 type DataStore struct {
 	path string
 	lock LockMode
 	flck *flock.Flock
 }
 
+// NewDataStore creates new datastore object with the given path and lock mode.
+// Return an error on system failures or when access to the directory is denied.
 func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 	d := &DataStore{
 		path: dataStorePath,
@@ -62,6 +73,7 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 	return d, nil
 }
 
+// NewAppendFile creates new append files object with the given path, flags and type.
 func NewAppendFile(dataStorePath string, fileFlags int, appendType AppendType) *AppendFile {
 	a := &AppendFile{
 		filePath:   dataStorePath,
@@ -72,6 +84,8 @@ func NewAppendFile(dataStorePath string, fileFlags int, appendType AppendType) *
 	return a
 }
 
+// createDataStoreDir creates a new directory to be a datastore directory
+// and acquires the necessary lock.
 func (d *DataStore) createDataStoreDir() error {
 	err := os.MkdirAll(d.path, os.FileMode(0777))
 	if err != nil {
@@ -86,19 +100,23 @@ func (d *DataStore) createDataStoreDir() error {
 	return nil
 }
 
+// openDataStoreDir tries to open an existing datastore directory
+// and acquires the necessary lock.
+// return true if it could acquire the lock.
+// return error on system failures.
 func (d *DataStore) openDataStoreDir() (bool, error) {
 	acquired, err := d.acquireFileLock()
 	if err != nil {
 		return false, err
 	}
 
-	if !acquired {
-		return acquired, nil
-	}
-
-	return true, nil
+	return acquired, nil
 }
 
+// acquireFileLock tries to acquire a file lock on the datastore directory
+// with the desired datastore lock mode.
+// return true if it managed to acquire the lock, and false otherwise.
+// return error on system failures.
 func (d *DataStore) acquireFileLock() (bool, error) {
 	var err error
 	var ok bool
@@ -117,6 +135,9 @@ func (d *DataStore) acquireFileLock() (bool, error) {
 	return ok, nil
 }
 
+// ReadValueFromFile parses the valued corresponding to the given key.
+// Return the parsed value and a non-nil error if values is not exist
+// or on system failures.
 func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize uint32) (string, error) {
 	bufsz := recfmt.DataFileRecHdr + uint32(len(key)) + valueSize
 	buf := make([]byte, bufsz)
@@ -133,17 +154,19 @@ func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize ui
 		return "", err
 	}
 
-	if data.Value == TompStoneValue {
+	if data.Value == TompStone {
 		return "", errors.New(fmt.Sprintf("%s: %s", data.Key, KeyNotExist))
 	}
 
 	return data.Value, nil
 }
 
+// Path returns the path of the datastore directory.
 func (d *DataStore) Path() string {
 	return d.path
 }
 
+// Close frees the acquired lock on the datastore directory.
 func (d *DataStore) Close() {
 	d.flck.Unlock()
 }

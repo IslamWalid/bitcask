@@ -1,3 +1,4 @@
+// Package recfmt provides functionality to compress and extrct datastore file records.
 package recfmt
 
 import (
@@ -6,9 +7,15 @@ import (
 	"hash/crc32"
 )
 
-const DataFileRecHdr = 18
-const dataCorruption = "corrution detected: datastore files are corrupted"
+const (
+	// DataFileRecHdr represents the constant header length of data file records.
+	DataFileRecHdr = 18
 
+	// Error message whenever a data file record is corrupted.
+	dataCorruption = "corrution detected: datastore files are corrupted"
+)
+
+// DataRec represents the data parsed from a data file record.
 type DataRec struct {
 	Key       string
 	Value     string
@@ -17,6 +24,7 @@ type DataRec struct {
 	ValueSize uint32
 }
 
+// CompressDataFileRec compresses the given data into a data file record.
 func CompressDataFileRec(key, value string, tstamp int64) []byte {
 	buf := make([]byte, DataFileRecHdr+len(key)+len(value))
 
@@ -32,6 +40,9 @@ func CompressDataFileRec(key, value string, tstamp int64) []byte {
 	return buf
 }
 
+// ExtractDataFileRec extracts the data file record into a data record.
+// Return the data record and its length in the file.
+// Return an error whenever the data is corrupted.
 func ExtractDataFileRec(buf []byte) (*DataRec, uint32, error) {
 	parsedSum := binary.LittleEndian.Uint32(buf)
 	tstamp := binary.LittleEndian.Uint64(buf[4:])
@@ -55,6 +66,8 @@ func ExtractDataFileRec(buf []byte) (*DataRec, uint32, error) {
 	}, DataFileRecHdr + valueSize + uint32(keySize), nil
 }
 
+// validateCheckSum runs the validate check on the data.
+// return an error if the data is corrupted.
 func validateCheckSum(parsedSum uint32, rec []byte) error {
 	wantedSum := crc32.ChecksumIEEE(rec)
 	if parsedSum != wantedSum {

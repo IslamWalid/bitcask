@@ -5,8 +5,10 @@ import (
 	"strconv"
 )
 
+// keyDirFileHdr represents the constant header length of keydir file records.
 const keyDirFileHdr = 26
 
+// KeyDirRec represents the data parsed from a keydir file record.
 type KeyDirRec struct {
 	FileId    string
 	ValuePos  uint32
@@ -14,6 +16,7 @@ type KeyDirRec struct {
 	Tstamp    int64
 }
 
+// CompressKeyDirRec compresses the given data into a keydir file record.
 func CompressKeyDirRec(key string, rec KeyDirRec) []byte {
 	keySize := len(key)
 	buf := make([]byte, keyDirFileHdr+keySize)
@@ -28,6 +31,8 @@ func CompressKeyDirRec(key string, rec KeyDirRec) []byte {
 	return buf
 }
 
+// ExtractKeyDirRec extracts the keydir file record into a keydir record.
+// Return the keydir record and its length in the file.
 func ExtractKeyDirRec(buf []byte) (string, KeyDirRec, int) {
 	fileId := strconv.FormatUint(binary.LittleEndian.Uint64(buf), 10)
 	keySize := binary.LittleEndian.Uint16(buf[8:])

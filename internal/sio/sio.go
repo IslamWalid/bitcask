@@ -1,3 +1,5 @@
+// Package sio provides read and write operations on files rubost against
+// short count problem.
 package sio
 
 import (
@@ -5,10 +7,13 @@ import (
 	"os"
 )
 
+// File represents the file with safe i/o functions.
 type File struct {
 	File *os.File
 }
 
+// OpenFile Create a new sio file object with the given flag and permissions.
+// Return error on system failures.
 func OpenFile(name string, flag int, perm fs.FileMode) (*File, error) {
 	file, err := os.OpenFile(name, flag, perm)
 	if err != nil {
@@ -22,6 +27,8 @@ func OpenFile(name string, flag int, perm fs.FileMode) (*File, error) {
 	return f, nil
 }
 
+// Open opens an new file with the given name with readonly permission.
+// Return error on system failures.
 func Open(name string) (*File, error) {
 	file, err := os.Open(name)
 	if err != nil {
@@ -35,6 +42,10 @@ func Open(name string) (*File, error) {
 	return f, nil
 }
 
+// ReadAt reads the data from the given position with length
+// equal to the length of the given buffer.
+// Return the number of read bytes.
+// Return error on system failures.
 func (f *File) ReadAt(b []byte, off int64) (int, error) {
 	attempts := 0
 	n, err := f.File.ReadAt(b, off)
@@ -49,6 +60,9 @@ func (f *File) ReadAt(b []byte, off int64) (int, error) {
 	return len(b), nil
 }
 
+// Write writes the given buffer to the file.
+// Return the number of written bytes.
+// Return error on system failures.
 func (f *File) Write(b []byte) (int, error) {
 	n, err := f.File.Write(b)
 
