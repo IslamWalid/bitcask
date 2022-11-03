@@ -1,0 +1,17 @@
+name: bitcask ci
+
+on: [ push ]
+
+jobs:
+  code_testing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install golang
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+
+    - name: unit test
+      run: go test -v
