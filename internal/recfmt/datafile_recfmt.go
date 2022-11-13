@@ -7,13 +7,11 @@ import (
 	"hash/crc32"
 )
 
-const (
-	// DataFileRecHdr represents the constant header length of data file records.
-	DataFileRecHdr = 18
+// DataFileRecHdr represents the constant header length of data file records.
+const DataFileRecHdr = 18
 
-	// Error message whenever a data file record is corrupted.
-	dataCorruption = "corrution detected: datastore files are corrupted"
-)
+// errDataCorruption happens whenever a data file record is corrupted.
+var errDataCorruption = errors.New("corrution detected: datastore files are corrupted")
 
 // DataRec represents the data parsed from a data file record.
 type DataRec struct {
@@ -71,7 +69,7 @@ func ExtractDataFileRec(buf []byte) (*DataRec, uint32, error) {
 func validateCheckSum(parsedSum uint32, rec []byte) error {
 	wantedSum := crc32.ChecksumIEEE(rec)
 	if parsedSum != wantedSum {
-		return errors.New(dataCorruption)
+		return errDataCorruption
 	}
 
 	return nil

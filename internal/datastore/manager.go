@@ -23,13 +23,15 @@ const (
 
 	// lockFile is the name of the file used to lock the datastore directory.
 	lockFile = ".lck"
+)
 
-	// Error message to represent permission denied access to the datastore
-	// when the directory is lock.
-	accessDenied = "access denied: datastore is locked"
+var (
+	// errAccessDenied happens when a bitcask process tries to access to the datastore
+	// when the directory is locked.
+	errAccessDenied = errors.New("access denied: datastore is locked")
 
-	// Error message to represent the absense of a value.
-	KeyNotExist = "key does not exist"
+	// ErrKeyNotExist happens when accessing value does not exist.
+	ErrKeyNotExist = errors.New("key does not exist")
 )
 
 // LockMode represents the lock mode of the directory.
@@ -59,7 +61,7 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 			return nil, err
 		}
 		if !acquired {
-			return nil, errors.New(accessDenied)
+			return nil, errAccessDenied
 		}
 	} else if os.IsNotExist(dirErr) && lock == ExclusiveLock {
 		err := d.createDataStoreDir()
@@ -155,7 +157,7 @@ func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize ui
 	}
 
 	if data.Value == TompStone {
-		return "", errors.New(fmt.Sprintf("%s: %s", data.Key, KeyNotExist))
+		return "", errors.New(fmt.Sprintf("%s: %s", data.Key, ErrKeyNotExist))
 	}
 
 	return data.Value, nil
