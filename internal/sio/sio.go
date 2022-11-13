@@ -7,6 +7,10 @@ import (
 	"os"
 )
 
+// maxAttempts defines the total number of attempts done by read
+// or write functions to handle short count problem.
+const maxAttempts = 5
+
 // File represents the file with safe i/o functions.
 type File struct {
 	File *os.File
@@ -50,7 +54,7 @@ func (f *File) ReadAt(b []byte, off int64) (int, error) {
 	attempts := 0
 	n, err := f.File.ReadAt(b, off)
 	for i := n; err != nil; i += n {
-		if attempts == 5 {
+		if attempts == maxAttempts {
 			return 0, err
 		}
 		off += int64(i)
@@ -68,7 +72,7 @@ func (f *File) Write(b []byte) (int, error) {
 
 	attempts := 0
 	for i := n; err != nil; i += n {
-		if attempts == 5 {
+		if attempts == maxAttempts {
 			return 0, err
 		}
 		n, err = f.File.Write(b[i:])
