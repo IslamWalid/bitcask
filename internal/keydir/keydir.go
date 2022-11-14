@@ -27,14 +27,16 @@ const (
 	hint fileType = 1
 )
 
-// fileType specifies whether the file is a data or hint file.
-type fileType int
+type (
+	// fileType specifies whether the file is a data or hint file.
+	fileType int
 
-// KeyDirPrivacy specifies whether the keydir is private or shared.
-type KeyDirPrivacy int
+	// KeyDirPrivacy specifies whether the keydir is private or shared.
+	KeyDirPrivacy int
 
-// KeyDir represents the map used by the bitcask.
-type KeyDir map[string]recfmt.KeyDirRec
+	// KeyDir represents the map used by the bitcask.
+	KeyDir map[string]recfmt.KeyDirRec
+)
 
 // New creates a new keydir map from the given datastore.
 // Select the convenient mechanism of building the keydir.

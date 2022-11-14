@@ -1,4 +1,4 @@
-// Package sio provides read and write operations on files rubost against
+// Package sio(Safe I/O) provides read and write operations on files rubost against
 // short count problem.
 package sio
 

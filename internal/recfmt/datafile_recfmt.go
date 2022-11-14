@@ -1,4 +1,4 @@
-// Package recfmt provides functionality to compress and extrct datastore file records.
+// Package recfmt(record format) provides functionality to compress and extrct datastore file records.
 package recfmt
 
 import (

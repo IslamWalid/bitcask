@@ -29,28 +29,30 @@ const (
 // errRequireWrite happens whenever a user with ReadOnly permission tries to do a writing operation.
 var errRequireWrite = errors.New("require write permission")
 
-// ConfigOpt represents the config options the user can have.
-type ConfigOpt int
+type (
+	// ConfigOpt represents the config options the user can have.
+	ConfigOpt int
 
-// options groups the config options passed to Open.
-type options struct {
-	syncOption       ConfigOpt
-	accessPermission ConfigOpt
-}
+	// options groups the config options passed to Open.
+	options struct {
+		syncOption       ConfigOpt
+		accessPermission ConfigOpt
+	}
 
-// Bitcask represents the bitcask object.
-// Bitcask contains the metadata needed to manipulate the bitcask datastore.
-// User creates an object of it with to use the bitcask.
-// Provides several methods to manipulate the datastore data.
-type Bitcask struct {
-	keyDir     keydir.KeyDir
-	usrOpts    options
-	keyDirMu   sync.Mutex
-	readerCnt  int32
-	dataStore  *datastore.DataStore
-	activeFile *datastore.AppendFile
-	fileFlags  int
-}
+	// Bitcask represents the bitcask object.
+	// Bitcask contains the metadata needed to manipulate the bitcask datastore.
+	// User creates an object of it with to use the bitcask.
+	// Provides several methods to manipulate the datastore data.
+	Bitcask struct {
+		keyDir     keydir.KeyDir
+		usrOpts    options
+		keyDirMu   sync.Mutex
+		readerCnt  int32
+		dataStore  *datastore.DataStore
+		activeFile *datastore.AppendFile
+		fileFlags  int
+	}
+)
 
 // Open creates a new bitcask object to manipulate the given datastore path.
 // It can take options ReadWrite, ReadOnly, SyncOnPut and SyncOnDemand as config options.

@@ -20,20 +20,22 @@ const (
 	maxFileSize = 10 * 1024
 )
 
-// AppendType represents the type of the append file.
-type AppendType int
+type (
+	// AppendType represents the type of the append file.
+	AppendType int
 
-// AppendFile contains the metadata about the append file.
-type AppendFile struct {
-	fileWrapper *sio.File
-	hintWrapper *sio.File
-	fileName    string
-	filePath    string
-	fileFlags   int
-	appendType  AppendType
-	currentPos  int
-	currentSize int
-}
+	// AppendFile contains the metadata about the append file.
+	AppendFile struct {
+		fileWrapper *sio.File
+		hintWrapper *sio.File
+		fileName    string
+		filePath    string
+		fileFlags   int
+		appendType  AppendType
+		currentPos  int
+		currentSize int
+	}
+)
 
 // WriteData writes a data record to the given append file.
 // Return the position of the written data.
@@ -124,6 +126,7 @@ func (a *AppendFile) Sync() error {
 	if a.fileWrapper != nil {
 		return a.fileWrapper.File.Sync()
 	}
+
 	return nil
 }
 

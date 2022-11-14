@@ -34,15 +34,17 @@ var (
 	ErrKeyNotExist = errors.New("key does not exist")
 )
 
-// LockMode represents the lock mode of the directory.
-type LockMode int
+type (
+	// LockMode represents the lock mode of the directory.
+	LockMode int
 
-// DataStore represents and contains the metadata of the datastore directory.
-type DataStore struct {
-	path string
-	lock LockMode
-	flck *flock.Flock
-}
+	// DataStore represents and contains the metadata of the datastore directory.
+	DataStore struct {
+		path string
+		lock LockMode
+		flck *flock.Flock
+	}
+)
 
 // NewDataStore creates new datastore object with the given path and lock mode.
 // Return an error on system failures or when access to the directory is denied.
@@ -134,6 +136,7 @@ func (d *DataStore) acquireFileLock() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return ok, nil
 }
 
