@@ -38,7 +38,9 @@ func (b *Bitcask) listOldFiles() ([]string, error) {
 	}
 	defer dataStore.Close()
 
+	b.accessMu.Lock()
 	files, err := dataStore.Readdir(0)
+	b.accessMu.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +59,9 @@ func (b *Bitcask) listOldFiles() ([]string, error) {
 // returns the new record about the written data
 // returns error if the data is deleted and will not be written again or on any system failures.
 func (b *Bitcask) mergeWrite(mergeFile *datastore.AppendFile, key string) (recfmt.KeyDirRec, error) {
-	value, err := b.Get(key)
+	rec := b.keyDir[key]
+
+	value, err := b.dataStore.ReadValueFromFile(rec.FileId, key, rec.ValuePos, rec.ValueSize)
 	if err != nil {
 		return recfmt.KeyDirRec{}, err
 	}

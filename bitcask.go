@@ -46,7 +46,7 @@ type (
 	Bitcask struct {
 		keyDir     keydir.KeyDir
 		usrOpts    options
-		keyDirMu   sync.Mutex
+		accessMu   sync.Mutex
 		readerCnt  int32
 		dataStore  *datastore.DataStore
 		activeFile *datastore.AppendFile
@@ -100,23 +100,28 @@ func Open(dataStorePath string, opts ...ConfigOpt) (*Bitcask, error) {
 // Get retrieves the value by key from a bitcask datastore.
 // Return an error if key does not exist in the bitcask datastore.
 func (b *Bitcask) Get(key string) (string, error) {
+	var value string
+	var err error
+
 	if b.readerCnt == 0 {
-		b.keyDirMu.Lock()
+		b.accessMu.Lock()
 	}
 	atomic.AddInt32(&b.readerCnt, 1)
 
 	rec, isExist := b.keyDir[key]
+	if !isExist {
+		value = ""
+		err = errors.New(fmt.Sprintf("%s: %s", key, datastore.ErrKeyNotExist))
+	} else {
+		value, err = b.dataStore.ReadValueFromFile(rec.FileId, key, rec.ValuePos, rec.ValueSize)
+	}
 
 	atomic.AddInt32(&b.readerCnt, -1)
 	if b.readerCnt == 0 {
-		b.keyDirMu.Unlock()
+		b.accessMu.Unlock()
 	}
 
-	if !isExist {
-		return "", errors.New(fmt.Sprintf("%s: %s", key, datastore.ErrKeyNotExist))
-	}
-
-	return b.dataStore.ReadValueFromFile(rec.FileId, key, rec.ValuePos, rec.ValueSize)
+	return value, err
 }
 
 // Put stores a value by key in a bitcask datastore.
@@ -127,21 +132,21 @@ func (b *Bitcask) Put(key, value string) error {
 	}
 
 	tstamp := time.Now().UnixMicro()
+
+	b.accessMu.Lock()
+	defer b.accessMu.Unlock()
+
 	n, err := b.activeFile.WriteData(key, value, tstamp)
 	if err != nil {
 		return err
 	}
 
-	rec := recfmt.KeyDirRec{
+	b.keyDir[key] = recfmt.KeyDirRec{
 		FileId:    b.activeFile.Name(),
 		ValuePos:  uint32(n),
 		ValueSize: uint32(len(value)),
 		Tstamp:    tstamp,
 	}
-
-	b.keyDirMu.Lock()
-	b.keyDir[key] = rec
-	b.keyDirMu.Unlock()
 
 	return nil
 }
@@ -169,7 +174,7 @@ func (b *Bitcask) ListKeys() []string {
 	res := make([]string, 0)
 
 	if b.readerCnt == 0 {
-		b.keyDirMu.Lock()
+		b.accessMu.Lock()
 	}
 	atomic.AddInt32(&b.readerCnt, 1)
 
@@ -179,7 +184,7 @@ func (b *Bitcask) ListKeys() []string {
 
 	atomic.AddInt32(&b.readerCnt, -1)
 	if b.readerCnt == 0 {
-		b.keyDirMu.Unlock()
+		b.accessMu.Unlock()
 	}
 
 	return res
@@ -189,7 +194,7 @@ func (b *Bitcask) ListKeys() []string {
 // fun is expected to be in the form: F(K, V, Acc) -> Acc
 func (b *Bitcask) Fold(fn func(string, string, any) any, acc any) any {
 	if b.readerCnt == 0 {
-		b.keyDirMu.Lock()
+		b.accessMu.Lock()
 	}
 	atomic.AddInt32(&b.readerCnt, 1)
 
@@ -200,7 +205,7 @@ func (b *Bitcask) Fold(fn func(string, string, any) any, acc any) any {
 
 	atomic.AddInt32(&b.readerCnt, -1)
 	if b.readerCnt == 0 {
-		b.keyDirMu.Unlock()
+		b.accessMu.Unlock()
 	}
 
 	return acc
@@ -216,22 +221,22 @@ func (b *Bitcask) Merge() error {
 		return errors.New(fmt.Sprintf("Merge: %s", errRequireWrite))
 	}
 
-	b.keyDirMu.Lock()
-	oldKeyDir := b.keyDir
-	b.keyDirMu.Unlock()
-	newKeyDir := keydir.KeyDir{}
 	oldFiles, err := b.listOldFiles()
 	if err != nil {
 		return err
 	}
 
+	b.accessMu.Lock()
+	newKeyDir := keydir.KeyDir{}
 	mergeFile := datastore.NewAppendFile(b.dataStore.Path(), b.fileFlags, datastore.Merge)
 	defer mergeFile.Close()
-	for key, rec := range oldKeyDir {
+
+	for key, rec := range b.keyDir {
 		if rec.FileId != b.activeFile.Name() {
 			newRec, err := b.mergeWrite(mergeFile, key)
 			if err != nil {
 				if !strings.HasSuffix(err.Error(), datastore.ErrKeyNotExist.Error()) {
+					b.accessMu.Unlock()
 					return err
 				}
 			} else {
@@ -242,10 +247,8 @@ func (b *Bitcask) Merge() error {
 		}
 	}
 
-	b.keyDirMu.Lock()
 	b.keyDir = newKeyDir
-	b.keyDirMu.Unlock()
-
+	b.accessMu.Unlock()
 	b.deleteOldFiles(oldFiles)
 
 	return nil
