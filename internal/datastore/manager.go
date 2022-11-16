@@ -160,7 +160,7 @@ func (d *DataStore) ReadValueFromFile(fileId, key string, valuePos, valueSize ui
 	}
 
 	if data.Value == TompStone {
-		return "", errors.New(fmt.Sprintf("%s: %s", data.Key, ErrKeyNotExist))
+		return "", fmt.Errorf("%s: %s", data.Key, ErrKeyNotExist)
 	}
 
 	return data.Value, nil

@@ -111,7 +111,7 @@ func (b *Bitcask) Get(key string) (string, error) {
 	rec, isExist := b.keyDir[key]
 	if !isExist {
 		value = ""
-		err = errors.New(fmt.Sprintf("%s: %s", key, datastore.ErrKeyNotExist))
+		err = fmt.Errorf("%s: %s", key, datastore.ErrKeyNotExist)
 	} else {
 		value, err = b.dataStore.ReadValueFromFile(rec.FileId, key, rec.ValuePos, rec.ValueSize)
 	}
@@ -128,7 +128,7 @@ func (b *Bitcask) Get(key string) (string, error) {
 // Return an error on any system failure when writing the data.
 func (b *Bitcask) Put(key, value string) error {
 	if b.usrOpts.accessPermission == ReadOnly {
-		return errors.New(fmt.Sprintf("Put: %s", errRequireWrite))
+		return fmt.Errorf("Put: %s", errRequireWrite)
 	}
 
 	tstamp := time.Now().UnixMicro()
@@ -156,7 +156,7 @@ func (b *Bitcask) Put(key, value string) error {
 // Return an error if key does not exist in the bitcask datastore.
 func (b *Bitcask) Delete(key string) error {
 	if b.usrOpts.accessPermission == ReadOnly {
-		return errors.New(fmt.Sprintf("Delete: %s", errRequireWrite))
+		return fmt.Errorf("Delete: %s", errRequireWrite)
 	}
 
 	_, err := b.Get(key)
@@ -218,7 +218,7 @@ func (b *Bitcask) Fold(fn func(string, string, any) any, acc any) any {
 // Return an error if ReadWrite permission is not set or on any system failures when writing data.
 func (b *Bitcask) Merge() error {
 	if b.usrOpts.accessPermission == ReadOnly {
-		return errors.New(fmt.Sprintf("Merge: %s", errRequireWrite))
+		return fmt.Errorf("Merge: %s", errRequireWrite)
 	}
 
 	oldFiles, err := b.listOldFiles()
@@ -258,7 +258,7 @@ func (b *Bitcask) Merge() error {
 // Return an error if ReadWrite permission is not set.
 func (b *Bitcask) Sync() error {
 	if b.usrOpts.accessPermission == ReadOnly {
-		return errors.New(fmt.Sprintf("Sync: %s", errRequireWrite))
+		return fmt.Errorf("Sync: %s", errRequireWrite)
 	}
 
 	return b.activeFile.Sync()
