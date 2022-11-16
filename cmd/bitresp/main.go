@@ -10,7 +10,7 @@ import (
 
 func main() {
 	pathPtr := flag.String("d", "", "specify the desired datastore path")
-	port := flag.Int("d", 6379, "specify the desired server port")
+	port := flag.Int("p", 6379, "specify the desired server port")
 	flag.Parse()
 
 	s, err := resp.New(*pathPtr, fmt.Sprintf(":%d", *port))
