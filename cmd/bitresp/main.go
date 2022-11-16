@@ -18,6 +18,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	defer s.Close()
 
 	err = s.ListenAndServe()
 	if err != nil {

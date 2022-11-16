@@ -47,6 +47,11 @@ func (r *RespServer) ListenAndServe() error {
 	return nil
 }
 
+// Close closes the used bitcask datastore.
+func (r *RespServer) Close() {
+	r.bitcask.Close()
+}
+
 // registerHandlers register the callback methods to the server.
 func (r *RespServer) registerHandlers() {
 	r.server.HandleFunc("set", r.set)
