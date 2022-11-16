@@ -54,10 +54,13 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 		lock: lock,
 	}
 
-	dir, dirErr := os.Open(dataStorePath)
+	dir, errDir := os.Open(dataStorePath)
+	if errDir != nil && !os.IsNotExist(errDir) {
+		return nil, errDir
+	}
 	defer dir.Close()
 
-	if dirErr == nil {
+	if errDir == nil {
 		acquired, err := d.openDataStoreDir()
 		if err != nil {
 			return nil, err
@@ -65,13 +68,13 @@ func NewDataStore(dataStorePath string, lock LockMode) (*DataStore, error) {
 		if !acquired {
 			return nil, errAccessDenied
 		}
-	} else if os.IsNotExist(dirErr) && lock == ExclusiveLock {
+	} else if lock == ExclusiveLock {
 		err := d.createDataStoreDir()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		return nil, dirErr
+		return nil, errDir
 	}
 
 	return d, nil
