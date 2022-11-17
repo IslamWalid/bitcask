@@ -75,8 +75,8 @@ func main() {
     - `Put`, `Get`, `Delete` and `Sync` are blocking calls as they deals with I/O, so - whenever possible - it is a good idea to make a goroutine handles these calls and continue on the rest of the program.
     - `Merge` is also a blocking call like the mentioned above, but more slower since it works on all the data to reduce its size, so it prefered to use it when all writing operations is done. If there's another work to be done by the process, using a goroutine to handle the call will be a good idea as well.
 
-## RespServer Package
-
+## Resp Server Package
+The main idea is to implement a resp server to enable communicating with any remote bitcask datastore instanse using a client supports [resp protocol](https://redis.io/docs/reference/protocol-spec/), eg: `redis-cli`.
 - ### Get the package:
 ```sh
 go get github.com/IslamWalid/bitcask/pkg/respserver
@@ -114,7 +114,8 @@ func main() {
 }
 ```
 
-## Bitcask Resp Server
+## Bitcask Server
+A program that uses [resp server package](#resp-server-package) to start a bitcask server.
 - ### Installation:
 ```sh
 go install github.com/IslamWalid/bitcask/cmd/bitserver@latest
@@ -123,10 +124,10 @@ go install github.com/IslamWalid/bitcask/cmd/bitserver@latest
 - ### Usage:
     - Run the server:
     ```sh
-    bitresp -d <datastore_path> -p <port>
+    bitserver -d <datastore_path> -p <port>
     ```
     - Connect to it using redis-cli
     ```sh
     redis-cli -p <port>
     ```
-    **note:** both `bitresp` and `redis-cli` use `6379` as the default port in case `-p` is not specified.
+    **note:** both `bitserver` and `redis-cli` use `6379` as the default port in case `-p` is not specified.
