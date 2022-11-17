@@ -117,7 +117,7 @@ func main() {
 ## Bitcask Resp Server
 - ### Installation:
 ```sh
-go install github.com/IslamWalid/bitcask/cmd/bitresp@latest
+go install github.com/IslamWalid/bitcask/cmd/bitserver@latest
 ```
 
 - ### Usage:
