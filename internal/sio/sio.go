@@ -59,6 +59,7 @@ func (f *File) ReadAt(b []byte, off int64) (int, error) {
 		}
 		off += int64(i)
 		n, err = f.File.ReadAt(b[i:], int64(off))
+        attempts++
 	}
 
 	return len(b), nil
