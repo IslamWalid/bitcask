@@ -242,7 +242,7 @@ func categorizeFiles(allFiles []string) map[string]fileType {
 // share writes the keydir map data in keydir file to be used by other readers.
 // return an error on system failures.
 func (k KeyDir) share(dataStorePath string) error {
-	flags := os.O_CREATE | os.O_RDWR
+	flags := os.O_CREATE | os.O_RDWR | os.O_TRUNC
 	perm := os.FileMode(0666)
 	file, err := sio.OpenFile(path.Join(dataStorePath, "keydir"), flags, perm)
 	if err != nil {
