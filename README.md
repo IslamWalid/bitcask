@@ -73,10 +73,10 @@ func main() {
 ```
 - **Important Notes:**
     - `Put`, `Get`, `Delete` and `Sync` are blocking calls as they deals with I/O, so - whenever possible - it is a good idea to make a goroutine handles these calls and continue on the rest of the program.
-    - `Merge` is also a blocking call like the mentioned above, but more slower since it works on all the data to reduce its size, so it prefered to use it when all writing operations is done. If there's another work to be done by the process, using a goroutine to handle the call will be a good idea as well.
+    - `Merge` is also a blocking call like the mentioned above, but more slower since it works on all the data to reduce its size, so it preferred to use it when all writing operations is done. If there's another work to be done by the process, using a goroutine to handle the call will be a good idea as well.
 
 ## Resp Server Package
-The main idea is to implement a resp server to enable communicating with any remote bitcask datastore instanse using a client supports [resp protocol](https://redis.io/docs/reference/protocol-spec/), eg: `redis-cli`.
+The main idea is to implement a resp server to enable communicating with any remote bitcask datastore instance using a client supports [resp protocol](https://redis.io/docs/reference/protocol-spec/), eg: `redis-cli`.
 - ### Get the package:
 ```sh
 go get github.com/IslamWalid/bitcask/pkg/respserver
